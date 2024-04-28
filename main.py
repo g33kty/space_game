@@ -22,12 +22,12 @@ FPS = pygame.time.Clock()  # Таймер для контролю частоти
 main_display = pygame.display.set_mode((WIDTH, HEIGHT))  # Створення вікна гри
 
 # Завантаження та масштабування фону гри
-bg = pygame.transform.scale(pygame.image.load("background.png"), (WIDTH, HEIGHT))
+bg = pygame.transform.scale(pygame.image.load("sprites/background.png"), (WIDTH, HEIGHT))
 bg_x1 = 0  # Початкова позиція першого фону
 bg_x2 = bg.get_width()  # Початкова позиція другого фону
 
 bg_move = 3  # Швидкість переміщення фону
-player = pygame.image.load("player.png").convert_alpha()  # Завантаження зображення гравця
+player = pygame.image.load("sprites/player.png").convert_alpha()  # Завантаження зображення гравця
 
 player_rect = player.get_rect()  # Отримання прямокутника, що охоплює спрайт гравця
 player_rect.x = 200  # Початкова позиція гравця по x
@@ -41,14 +41,14 @@ player_move_left = [-4, 0]
 
 def create_enemy():
     enemy_size = (30, 30)
-    enemy = pygame.transform.scale(pygame.image.load("enemy.png"), (100, 50)).convert_alpha()
+    enemy = pygame.transform.scale(pygame.image.load("sprites/enemy.png"), (100, 50)).convert_alpha()
     enemy_rect = pygame.Rect(WIDTH, random.randint(100, HEIGHT - 100), *enemy_size)
     enemy_move = [random.randint(-8, -4), 0]
     return [enemy, enemy_rect, enemy_move]  # Створення ворога
 
 def create_bonus():
     bonus_size = (30, 30)
-    bonus = pygame.transform.scale(pygame.image.load("bonus.png"), (150, 30)).convert_alpha()
+    bonus = pygame.transform.scale(pygame.image.load("sprites/bonus.png"), (150, 30)).convert_alpha()
     bonus_rect = pygame.Rect(random.randint(300, 700), 0, *bonus_size)
     bonus_move = [0, random.randint(4, 6)]
     return [bonus, bonus_rect, bonus_move]  # Створення бонусу

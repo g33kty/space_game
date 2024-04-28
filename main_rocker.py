@@ -1,9 +1,21 @@
 import pygame
 from enum import Enum
-from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT  # Імпорт констант з pygame
+from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT
 import random
 
 pygame.init()
+
+
+# Завантаження та масштабування фону гри
+# original_image = pygame.image.load("background_space.png")
+# scaled_image = pygame.transform.scale(original_image, (1200, 800))
+
+# bg = pygame.transform.rotate(original_image, 90)
+#
+# bg_y1 = 0  # Початкова позиція першого фону
+# bg_y2 = bg.get_height()  # Початкова позиція другого фону
+#
+# bg_move = 1 # Швидкість переміщення фону
 
 
 class Constants(Enum):
@@ -18,7 +30,14 @@ class Constants(Enum):
 
 class Player:
     def __init__(self):
-        self.player_rect = pygame.Rect(0, 0, 50, 50)  # Параметри: (x, y, width, height)
+
+        self.original_image = pygame.image.load("sprites/img_2.png")
+        self.player = pygame.transform.scale(self.original_image, (150, 120))
+        # self.enemy = pygame.transform.rotate(self.scaled_image, 90)
+
+        self.player.set_colorkey(Constants.color_WHITE.value)
+        self.player_rect = self.player.get_rect()  # Параметри: (x, y, width, height)
+
         self.player_move_down = [0, 4]
         self.player_mover_right = [4, 0]
         self.player_move_up = [0, -4]
@@ -38,16 +57,16 @@ class Player:
         self.player_rect = self.player_rect.move(self.player_move_left)
 
     def draw_player(self):
-        pygame.draw.rect(game.main_display, (255, 0, 0), game.player.player_rect)  # Параметри: (surface, color, rect)
+        pygame.draw.rect(game.main_display, (255, 0, 0), game.player.player_rect)
 
     def set_center_pos(self):
         self.player_rect = self.player_rect.move(Constants.WIDTH.value // 2, Constants.HEIGHT.value // 2)
 
 class Enemy:
     def __init__(self):
-        self.enemy_rect = pygame.Rect(0, 0, 25, 25)  # Параметри: (x, y, width, height)
+        self.enemy_rect = pygame.Rect(0, 0, 25, 25)
         self.enemy_size = (30, 30)
-        self.original_image = pygame.image.load("enemy.png")
+        self.original_image = pygame.image.load("sprites/enemy.png")
         self.scaled_image = pygame.transform.scale(self.original_image, (100, 50))
 
         self.enemy = pygame.transform.rotate(self.scaled_image, 90)
@@ -57,14 +76,16 @@ class Enemy:
 
 class Game:
     __instance = None
-    score = 0
+    __score = 0
     enemies = []
     playing = True
+
     def __init__(self, player: Player()):
         self.FPS = pygame.time.Clock()
         self.player = player
         self.main_display = pygame.display.set_mode((Constants.WIDTH.value, Constants.HEIGHT.value))
-        pygame.time.set_timer(Constants.CREATE_ENEMY.value, 200)  # Таймер для події створення ворога
+        pygame.time.set_timer(Constants.CREATE_ENEMY.value, 200)
+        self.bg = pygame.transform.scale(pygame.image.load("sprites/background_space.png"), (1200, 800))
 
     def __new__(cls, *args, **kwargs):
         if cls.__instance is None:
@@ -85,8 +106,17 @@ while Game.playing:
         # if event.type == CREATE_BONUS:
         #     bonuses.append(create_bonus())  # Додавання нового бонуса
 
+    # bg_y1 -= bg_move  # Переміщення першого фону
+    # bg_y2 -= bg_move  # Переміщення другого фону
+    #
+    # if bg_y1 < -bg.get_height():
+    #     bg_y1 = bg.get_height()  # Зациклення першого фону
+    #
+    # if bg_y2 < -bg.get_height():
+    #     bg_y2 = bg.get_height()  # Зациклення другого фону
+
+
     keys = pygame.key.get_pressed()  # Отримання стану клавіш
-    # Обробка натискання клавіш для руху гравця
     if keys[K_DOWN] and game.player.player_rect.bottom < Constants.HEIGHT.value:
         game.player.move_down()
     if keys[K_UP] and game.player.player_rect.top > 0 < Constants.HEIGHT.value:
@@ -98,6 +128,9 @@ while Game.playing:
 
     game.main_display.fill(Constants.color_WHITE.value)
 
+    game.main_display.blit(game.bg, (0, 0))
+    # game.main_display.blit(bg, (bg_y1, 0))  # Відображення першого фону
+    # game.main_display.blit(bg, (bg_y2, 0))  # Відображення другого фону
 
     for obj in Game.enemies:
         obj.enemy_rect = obj.enemy_rect.move(obj.enemy_move)
@@ -108,8 +141,8 @@ while Game.playing:
 
         # if game.player.player_rect.colliderect(enemy):
         #     Constants.PLAYING = False
-
-    game.player.draw_player()
+    game.main_display.blit(game.player.player, game.player.player_rect)
+    # game.player.draw_player()
     pygame.display.flip()  # Оновлення вікна гри
 
     # Видалення ворогів та бонусів, що вийшли за межі екрану
