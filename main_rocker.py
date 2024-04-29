@@ -3,10 +3,6 @@ from enum import Enum
 from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT
 import random
 
-pygame.init()
-pygame.display.set_caption("staminaspace")
-square_size = 50
-
 
 class Constants(Enum):
     HEIGHT = 800
@@ -18,19 +14,19 @@ class Constants(Enum):
     color_GREEN = (0, 255, 0)
     CREATE_ENEMY = pygame.USEREVENT + 1
 
-square_x = (1200 - square_size) // 2
-square_y = (800 - square_size) // 2
+
 class Player:
-    def __init__(self):
+    def __init__(self ):
         self.original_image = pygame.image.load("sprites/img_2.png")
         self.player = pygame.transform.scale(self.original_image, (150, 120))
         # self.enemy = pygame.transform.rotate(self.scaled_image, 90)
-        self.reeect = pygame.Surface((50,50)).get_rect()
+        self.reeect = pygame.Surface((50, 50)).get_rect()
         self.player.set_colorkey(Constants.color_WHITE.value)
         self.player_rect = self.player.get_rect()  # Параметри: (x, y, width, height)
 
         self.player_x = self.player_rect.x
         self.player_y = self.player_rect.y
+
         self.player_move_down = [0, 4]
         self.player_mover_right = [4, 0]
         self.player_move_up = [0, -4]
@@ -70,19 +66,34 @@ class Enemy(pygame.sprite.Sprite):
             self.enemy_rect = pygame.Rect(0, 0, 25, 25)
             self.enemy_size = (30, 30)
             self.image_file = pygame.transform.scale(pygame.image.load("filename"), *self.enemy_size)
-
     def update(self, *args, **kwargs):
         self.rect.y += self.speed
         if self.rect.y > Constants.HEIGHT.value:
             self.kill()
+
+    def __lt__(self, other):  # <
+        return True if self.rect.y < other.rect.y else False
+
+    def __gt__(self, other):  # >
+        return True if self.rect.y > other.rect.y else False
+
+    def set_color(self):
+        self.image.fill(Constants.color_BLUE.value)
+        return self
+
+    def get_rect(self):
+        return self.rect
+
 
 class Game:
     __instance = None
     __score = 0
 
     def __init__(self, player: Player()):
+        pygame.init()
+        pygame.display.set_caption("staminaspace")
         self.CREATE_ENEMY = pygame.USEREVENT
-        pygame.time.set_timer(self.CREATE_ENEMY, 100)
+        pygame.time.set_timer(self.CREATE_ENEMY, 1500)
         self.playing = True
         self.enemies = pygame.sprite.Group()
         self.FPS = pygame.time.Clock()
@@ -95,6 +106,7 @@ class Game:
         if cls.__instance is None:
             cls.__instance = super().__new__(Game)
         return cls.__instance
+
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, target_x, target_y):
@@ -116,27 +128,29 @@ class Bullet(pygame.sprite.Sprite):
         if self.rect.colliderect(pygame.Rect(self.target_x - 5, self.target_y - 5, 10, 10)):
             self.kill()
 
-# Створення групи пуль
+
 bullets = pygame.sprite.Group()
 
-
-
 game = Game(player=Player())
+x = Enemy()
+game.enemies.add(x)
 
+
+temp_x, temp_y = None, None
 while game.playing:
     for event in pygame.event.get():
         if event.type == QUIT:
             game.playing = False
+
         if event.type == game.CREATE_ENEMY:
             x = Enemy()
             game.enemies.add(x)
+
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                # Створення нової пулі та додавання її до групи
-                x , y,  *_ = game.player.player_rect
-                new_bullet = Bullet(x+70  ,y, *pygame.mouse.get_pos())
+                x, y, *_ = game.player.player_rect
+                new_bullet = Bullet(x + 70, y, *pygame.mouse.get_pos())
                 bullets.add(new_bullet)
-
 
     keys = pygame.key.get_pressed()
     if keys[K_DOWN] and game.player.player_rect.bottom < Constants.HEIGHT.value:
@@ -148,25 +162,13 @@ while game.playing:
     if keys[K_LEFT] and game.player.player_rect.left > 0 < Constants.WIDTH.value:
         game.player.move_left()
 
-
     game.main_display.blit(game.bg, game.bg.get_rect())
 
-        # Оновлення позицій пуль
     bullets.update()
-
-
-
-    # game.main_display.fill(Constants.color_RED.value)
-
-
     game.enemies.update()
-    game.enemies.draw(game.main_display)
 
-    # Малювання квадрата
-    # pygame.draw.rect(game.main_display, Constants.color_GREEN.value, (square_x, square_y, square_size, square_size))
 
-    # Малювання пуль
-    bullets.draw(game.main_display)
+
     player_center_x = game.player.player_rect.centerx
     player_center_y = game.player.player_rect.centery
 
@@ -174,6 +176,18 @@ while game.playing:
         if enemy.rect.collidepoint(player_center_x, player_center_y):
             game.playing = False
 
+
+    for bullet in bullets:
+        down_bullet = max(game.enemies).set_color().get_rect()
+
+
+        bullet.target_x = down_bullet.x
+        bullet.target_y = down_bullet.y
+
+
+    game.enemies.draw(game.main_display)
+    bullets.draw(game.main_display)
     game.main_display.blit(game.player.player, game.player.player_rect)
+
     pygame.display.flip()
     game.FPS.tick(60)
