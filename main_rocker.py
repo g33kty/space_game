@@ -4,18 +4,8 @@ from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT
 import random
 
 pygame.init()
-
-
-# Завантаження та масштабування фону гри
-# original_image = pygame.image.load("background_space.png")
-# scaled_image = pygame.transform.scale(original_image, (1200, 800))
-
-# bg = pygame.transform.rotate(original_image, 90)
-#
-# bg_y1 = 0  # Початкова позиція першого фону
-# bg_y2 = bg.get_height()  # Початкова позиція другого фону
-#
-# bg_move = 1 # Швидкість переміщення фону
+pygame.display.set_caption("staminaspace")
+square_size = 50
 
 
 class Constants(Enum):
@@ -28,16 +18,19 @@ class Constants(Enum):
     color_GREEN = (0, 255, 0)
     CREATE_ENEMY = pygame.USEREVENT + 1
 
+square_x = (1200 - square_size) // 2
+square_y = (800 - square_size) // 2
 class Player:
     def __init__(self):
-
         self.original_image = pygame.image.load("sprites/img_2.png")
         self.player = pygame.transform.scale(self.original_image, (150, 120))
         # self.enemy = pygame.transform.rotate(self.scaled_image, 90)
-
+        self.reeect = pygame.Surface((50,50)).get_rect()
         self.player.set_colorkey(Constants.color_WHITE.value)
         self.player_rect = self.player.get_rect()  # Параметри: (x, y, width, height)
 
+        self.player_x = self.player_rect.x
+        self.player_y = self.player_rect.y
         self.player_move_down = [0, 4]
         self.player_mover_right = [4, 0]
         self.player_move_up = [0, -4]
@@ -62,25 +55,36 @@ class Player:
     def set_center_pos(self):
         self.player_rect = self.player_rect.move(Constants.WIDTH.value // 2, Constants.HEIGHT.value // 2)
 
-class Enemy:
-    def __init__(self):
-        self.enemy_rect = pygame.Rect(0, 0, 25, 25)
-        self.enemy_size = (30, 30)
-        self.original_image = pygame.image.load("sprites/enemy.png")
-        self.scaled_image = pygame.transform.scale(self.original_image, (100, 50))
 
-        self.enemy = pygame.transform.rotate(self.scaled_image, 90)
-        self.enemy_rect = pygame.Rect(random.randint(0, Constants.WIDTH.value), 0, *self.enemy_size)
-        self.enemy_move = [0, random.randint(4, 8)]
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, filename=None):
+        super().__init__()
+        if filename is None:
+            self.image = pygame.Surface((30, 30))
+            self.image.fill(Constants.color_BLACK.value)
+            self.rect = self.image.get_rect()
+            self.rect.x = random.randint(0, Constants.WIDTH.value - self.rect.width)
+            self.rect.y = 0
+            self.speed = random.randint(1, 5)
+        else:
+            self.enemy_rect = pygame.Rect(0, 0, 25, 25)
+            self.enemy_size = (30, 30)
+            self.image_file = pygame.transform.scale(pygame.image.load("filename"), *self.enemy_size)
 
+    def update(self, *args, **kwargs):
+        self.rect.y += self.speed
+        if self.rect.y > Constants.HEIGHT.value:
+            self.kill()
 
 class Game:
     __instance = None
     __score = 0
-    enemies = []
-    playing = True
 
     def __init__(self, player: Player()):
+        self.CREATE_ENEMY = pygame.USEREVENT
+        pygame.time.set_timer(self.CREATE_ENEMY, 100)
+        self.playing = True
+        self.enemies = pygame.sprite.Group()
         self.FPS = pygame.time.Clock()
         self.player = player
         self.main_display = pygame.display.set_mode((Constants.WIDTH.value, Constants.HEIGHT.value))
@@ -92,31 +96,49 @@ class Game:
             cls.__instance = super().__new__(Game)
         return cls.__instance
 
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, x, y, target_x, target_y):
+        super().__init__()
+        self.image = pygame.Surface((10, 10))
+        self.image.fill(Constants.color_WHITE.value)
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.speed = 10
+        self.target_x = target_x
+        self.target_y = target_y
+
+    def update(self):
+        direction_x = self.target_x - self.rect.centerx
+        direction_y = self.target_y - self.rect.centery
+        distance = max(abs(direction_x), abs(direction_y), 1)
+        self.rect.x += (direction_x / distance) * self.speed
+        self.rect.y += (direction_y / distance) * self.speed
+        if self.rect.colliderect(pygame.Rect(self.target_x - 5, self.target_y - 5, 10, 10)):
+            self.kill()
+
+# Створення групи пуль
+bullets = pygame.sprite.Group()
+
+
 
 game = Game(player=Player())
 
-
-while Game.playing:
-    game.FPS.tick(60)  # Установка частоти оновлення кадрів
+while game.playing:
     for event in pygame.event.get():
         if event.type == QUIT:
-            Game.playing = False  # Вихід з гри при закритті вікна
-        if event.type == Constants.CREATE_ENEMY.value:
-            Game.enemies.append(Enemy())  #
-        # if event.type == CREATE_BONUS:
-        #     bonuses.append(create_bonus())  # Додавання нового бонуса
-
-    # bg_y1 -= bg_move  # Переміщення першого фону
-    # bg_y2 -= bg_move  # Переміщення другого фону
-    #
-    # if bg_y1 < -bg.get_height():
-    #     bg_y1 = bg.get_height()  # Зациклення першого фону
-    #
-    # if bg_y2 < -bg.get_height():
-    #     bg_y2 = bg.get_height()  # Зациклення другого фону
+            game.playing = False
+        if event.type == game.CREATE_ENEMY:
+            x = Enemy()
+            game.enemies.add(x)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                # Створення нової пулі та додавання її до групи
+                x , y,  *_ = game.player.player_rect
+                new_bullet = Bullet(x+70  ,y, *pygame.mouse.get_pos())
+                bullets.add(new_bullet)
 
 
-    keys = pygame.key.get_pressed()  # Отримання стану клавіш
+    keys = pygame.key.get_pressed()
     if keys[K_DOWN] and game.player.player_rect.bottom < Constants.HEIGHT.value:
         game.player.move_down()
     if keys[K_UP] and game.player.player_rect.top > 0 < Constants.HEIGHT.value:
@@ -126,26 +148,32 @@ while Game.playing:
     if keys[K_LEFT] and game.player.player_rect.left > 0 < Constants.WIDTH.value:
         game.player.move_left()
 
-    game.main_display.fill(Constants.color_WHITE.value)
 
-    game.main_display.blit(game.bg, (0, 0))
-    # game.main_display.blit(bg, (bg_y1, 0))  # Відображення першого фону
-    # game.main_display.blit(bg, (bg_y2, 0))  # Відображення другого фону
+    game.main_display.blit(game.bg, game.bg.get_rect())
 
-    for obj in Game.enemies:
-        obj.enemy_rect = obj.enemy_rect.move(obj.enemy_move)
-        game.main_display.blit(obj.enemy, obj.enemy_rect)
+        # Оновлення позицій пуль
+    bullets.update()
 
-        if game.player.player_rect.colliderect(obj.enemy_rect):
-            Game.playing = False  # Завершення гри при зіткненні з ворого гри при зіткненні з ворогоn_display, Constants.color_GREEN.value, enemy.enemy_rect)
 
-        # if game.player.player_rect.colliderect(enemy):
-        #     Constants.PLAYING = False
+
+    # game.main_display.fill(Constants.color_RED.value)
+
+
+    game.enemies.update()
+    game.enemies.draw(game.main_display)
+
+    # Малювання квадрата
+    # pygame.draw.rect(game.main_display, Constants.color_GREEN.value, (square_x, square_y, square_size, square_size))
+
+    # Малювання пуль
+    bullets.draw(game.main_display)
+    player_center_x = game.player.player_rect.centerx
+    player_center_y = game.player.player_rect.centery
+
+    for enemy in game.enemies:
+        if enemy.rect.collidepoint(player_center_x, player_center_y):
+            game.playing = False
+
     game.main_display.blit(game.player.player, game.player.player_rect)
-    # game.player.draw_player()
-    pygame.display.flip()  # Оновлення вікна гри
-
-    # Видалення ворогів та бонусів, що вийшли за межі екрану
-    for obj in Game.enemies:
-        if obj.enemy_rect.left < 0:
-            Game.enemies.pop(Game.enemies.index(obj))
+    pygame.display.flip()
+    game.FPS.tick(60)
