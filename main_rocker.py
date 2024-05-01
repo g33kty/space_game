@@ -1,7 +1,15 @@
 import pygame
 from enum import Enum
-from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT
+from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT, K_a, K_b, K_c, K_d, K_e, K_f, K_g, K_h, K_i, K_j, \
+    K_k, K_m, K_n, K_p, K_r, K_l, K_o, K_q, K_s, K_t, K_u, K_v, K_w, K_x, K_y, K_z
 import random
+
+words = [
+    "adventure", "blossom", "curiosity", "delight", "envision",
+    "flourish", "graceful", "harmony", "insight", "jubilant",
+    "kinship", "luminous", "mystique", "nomadic", "opulence",
+    "pristine", "quaint", "resilient", "tranquil", "vivacious"
+]
 
 
 class Size(Enum):
@@ -64,19 +72,17 @@ class Player:
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, filename=None):
+    def __init__(self):
         super().__init__()
-        if filename is None:
-            self.image = pygame.Surface((30, 30))
-            self.image.fill(Color.BLACK.value)
-            self.rect = self.image.get_rect()
-            self.rect.x = random.randint(0, Size.WIDTH.value - self.rect.width)
-            self.rect.y = 0
-            self.speed = random.randint(1, 5)
-        else:
-            self.enemy_rect = pygame.Rect(0, 0, 25, 25)
-            self.enemy_size = (30, 30)
-            self.image_file = pygame.transform.scale(pygame.image.load("filename"), *self.enemy_size)
+        self.word = random.choice(words)
+        self.image = pygame.Surface((30, 30))
+        self.image.fill(Color.BLACK.value)
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randint(0, Size.WIDTH.value - self.rect.width)
+        self.rect.y = 0
+        self.speed = random.randint(1, 3)
+
+        self.focus = False
 
     def update(self, *args, **kwargs):
         self.rect.y += self.speed
@@ -95,6 +101,12 @@ class Enemy(pygame.sprite.Sprite):
 
     def get_rect(self):
         return self.rect
+
+    def delete_symbol(self, symbol):
+        if self.word[0] == symbol:
+            self.word = self.word[1:]
+            if self.word is "":
+                self.word = None
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -121,19 +133,23 @@ class Bullet(pygame.sprite.Sprite):
                 self.kill()
 
 
-
 class Game:
     __instance = None
     __score = 0
+    alphabet_keys = {
+        K_a: 'a', K_b: 'b', K_c: 'c', K_d: 'd', K_e: 'e', K_f: 'f', K_g: 'g',
+        K_h: 'h', K_i: 'i', K_j: 'j', K_k: 'k', K_l: 'l', K_m: 'm', K_n: 'n',
+        K_o: 'o', K_p: 'p', K_q: 'q', K_r: 'r', K_s: 's', K_t: 't', K_u: 'u',
+        K_v: 'v', K_w: 'w', K_x: 'x', K_y: 'y', K_z: 'z'
+    }
 
     def __init__(self, player: Player, enemy: Enemy):
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
-
         pygame.init()
         pygame.display.set_caption("staminaspace")
         self.CREATE_ENEMY = pygame.USEREVENT
-        pygame.time.set_timer(self.CREATE_ENEMY, 1500)
+        pygame.time.set_timer(self.CREATE_ENEMY, 10000)
 
         self.playing = True
         self.FPS = pygame.time.Clock()
@@ -143,7 +159,7 @@ class Game:
 
         self.main_display = pygame.display.set_mode((Size.WIDTH.value, Size.HEIGHT.value))
         self.bg = pygame.transform.scale(pygame.image.load("sprites/background_space.png"), (1200, 800))
-
+        self.current_key = None
         self.enemies.add(Enemy())
 
     def __new__(cls, *args, **kwargs):
@@ -157,7 +173,40 @@ class Game:
     def add_bullet(self, temp: Bullet):
         self.bullets.add(temp)
 
+    def get_pressed_key(self, key):
+        # Створюємо словник, де ключами є коди клавіш, а значеннями - відповідні символи
+        alphabet_keys = {
+            K_a: 'a', K_b: 'b', K_c: 'c', K_d: 'd', K_e: 'e', K_f: 'f', K_g: 'g',
+            K_h: 'h', K_i: 'i', K_j: 'j', K_k: 'k', K_l: 'l', K_m: 'm', K_n: 'n',
+            K_o: 'o', K_p: 'p', K_q: 'q', K_r: 'r', K_s: 's', K_t: 't', K_u: 'u',
+            K_v: 'v', K_w: 'w', K_x: 'x', K_y: 'y', K_z: 'z'
+        }
+        return alphabet_keys[key]
 
+    def check_keys(self):
+        keys = pygame.key.get_pressed()
+
+        for i in range(pygame.K_a, pygame.K_z + 1):
+            if keys[i]:
+                self.current_key = chr(i)
+
+    def generate_fragments(self, x, y):
+        for _ in range(10):
+            w = random.randint(10, 20)
+            h = random.randint(10, 20)
+            x = x
+            y = y
+
+            # x = rect.x + random.randint(0, rect.width - w)
+            # y = rect.y + random.randint(0, rect.height - h)
+            dx = random.randint(-5, 5)
+            dy = random.randint(-5, 5)
+            fragments.append([pygame.Rect(x, y, w, h), dx, dy])
+
+
+animating = False
+game_active = True  # Змінна для контролю активності гри
+fragments = []
 
 game = Game(player=Player(), enemy=Enemy())
 
@@ -169,6 +218,7 @@ while game.playing:
         if event.type == game.CREATE_ENEMY:
             game.add_enemy(Enemy())
 
+
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 player_center_x, player_center_y = game.player.player_rect.center
@@ -178,15 +228,40 @@ while game.playing:
     game.player.player_keyboard_move()
 
     for bullet in game.bullets:
-        nearest_enemy = max(game.enemies, key=lambda enemy: enemy.rect.centery).set_color()
+        try:
+            nearest_enemy = max(game.enemies, key=lambda enemy: enemy.rect.centery).set_color()
+            nearest_enemy.focus = True
+            if any(enemy.focus for enemy in game.enemies):
+                bullet.target_x, bullet.target_y = nearest_enemy.rect.center
+        except ValueError as e:
+            game.add_enemy(Enemy())
 
-        bullet.target_x, bullet.target_y = nearest_enemy.rect.center
+    # for bullet in game.bullets:
+    #     if bullet
 
     game.main_display.blit(game.bg, game.bg.get_rect())
     game.bullets.update()
     game.enemies.update()
 
     for enemy in game.enemies:
+        if enemy.word:
+            print(enemy.word)
+            game.check_keys()
+            if game.current_key is enemy.word[0]:
+                enemy.delete_symbol(game.current_key)
+                # if enemy.word and game.check_keys() in enemy.word:
+                player_center_x, player_center_y = game.player.player_rect.center
+                new_bullet = Bullet(player_center_x, player_center_y)
+                game.add_bullet(new_bullet)
+            if enemy.word is None:
+                for fragment in fragments:
+                    rect, dx, dy = fragment
+                    rect.x += dx
+                    rect.y += dy
+                    pygame.draw.rect(game.main_display,Color.BLACK.value, enemy.rect)
+                    game.playing = False
+                game.enemies.remove(enemy)
+
         if enemy.rect.colliderect(game.player.player_rect):
             game.playing = False
 
