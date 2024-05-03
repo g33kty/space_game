@@ -5,11 +5,15 @@ from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT, K_a, K_b, K_c,
 import random
 from itertools import zip_longest
 
+# words = [
+#     "adventure", "blossom", "curiosity", "delight", "envision",
+#     "flourish", "graceful", "harmony", "insight", "jubilant",
+#     "kinship", "luminous", "mystique", "nomadic", "opulence",
+#     "pristine", "quaint", "resilient", "tranquil", "vivacious"
+# ]
+#
 words = [
-    "adventure", "blossom", "curiosity", "delight", "envision",
-    "flourish", "graceful", "harmony", "insight", "jubilant",
-    "kinship", "luminous", "mystique", "nomadic", "opulence",
-    "pristine", "quaint", "resilient", "tranquil", "vivacious"
+    "abrakadabra", "aaaaaaaaaaaa", "graceful", "harmony"
 ]
 
 
@@ -29,53 +33,42 @@ class Color(Enum):
 class Player:
     def __init__(self):
         self.image = pygame.Surface((50, 50))
-
-        self.player_rect = self.image.get_rect(center=(Size.WIDTH.value // 2, Size.HEIGHT.value - 100))
-
-        self.player_x = self.player_rect.x
-        self.player_y = self.player_rect.y
+        self.rect = self.image.get_rect(center=(Size.WIDTH.value // 2, Size.HEIGHT.value - 100))
 
 
 class Enemy(pygame.sprite.Sprite):
-    focus = None
-
-
     def __init__(self):
         super().__init__()
         pygame.font.init()
 
         self.word = random.choice(words)
+        self.word2 = self.word
+
+        self.len_word = len(self.word)
+        self.start_word = self.word[0]
+
         self.image = pygame.Surface((30, 30))
         self.image.fill(Color.BLACK.value)
 
+        self.inner_color = Color.WHITE.value
+
+        self.focus = None
         self.rect = self.image.get_rect()
         self.rect.x = random.randint(0, Size.WIDTH.value - self.rect.width)
         self.rect.y = 0
-        self.speed = 1
-        self.font = pygame.font.Font(None, 36)
 
-    def draw_enemy(self):
-        text_surface = self.font.render(self.word, True, Color.WHITE.value, (0, 0, 0))
-        game.main_display.blit(text_surface, (self.rect.x, self.rect.y))
+        self.speed = 0.7
+        self.font = pygame.font.Font(None, 36)
+        self.text_surface = None
+
+    def draw(self):
+        self.text_surface = self.font.render(self.word, True, self.inner_color, (0, 0, 0))
+        game.main_display.blit(self.text_surface, (self.rect.x, self.rect.y))
 
     def update(self, *args, **kwargs):
         self.rect.y += self.speed
         if self.rect.y > Size.HEIGHT.value:
             self.kill()
-
-    def get_rect_2(self):
-        return Enemy.focus.rect
-
-
-    def dead(self):
-        if Enemy.focus == None:
-            Enemy.focus = self
-            print(self)
-        if Enemy.focus.rect.y > Size.HEIGHT.value:
-            Enemy.focus = None
-            self.kill()
-        return Enemy.focus
-
 
     def __lt__(self, other):  # <
         return True if self.rect.y < other.rect.y else False
@@ -84,53 +77,33 @@ class Enemy(pygame.sprite.Sprite):
         return True if self.rect.y > other.rect.y else False
 
     def set_color(self):
-        self.image.fill(Color.BLUE.value)
-        return self
+        self.inner_color = Color.GREEN.value
 
     def delete_symbol(self, symbol):
         if self.word[0] == symbol:
             self.word = self.word[1:]
-            if self.word is "":
+            if self.word == "":
                 self.word = None
 
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, target_x, target_y):
         super().__init__()
         self.image = pygame.Surface((10, 10))
         self.image.fill(Color.WHITE.value)
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
-        self.speed = 15
-
-        self.target_x = None
-        self.target_y = None
-
-        self.target_enemy = None
-
-        self.direction_x = None
-        self.direction_y = None
-
-    def set_dead_coordinates(self, other):
-        self.direction_x, self.direction_y = other.x, other.y
+        self.speed = 20
+        self.target_x = target_x
+        self.target_y = target_y
+        self.velocity_x = (self.target_x - x) / max(abs(self.target_x - x), abs(self.target_y - y), 1) * self.speed
+        self.velocity_y = (self.target_y - y) / max(abs(self.target_x - x), abs(self.target_y - y), 1) * self.speed
 
     def update(self):
-        if self.target_x is not None and self.target_y is not None:
-            self.direction_x = self.target_x - self.rect.centerx
-            self.direction_y = self.target_y - self.rect.centery
-            distance = max(abs(self.direction_x), abs(self.direction_y), 1)
-            self.rect.x += (self.direction_x / distance) * self.speed
-            self.rect.y += (self.direction_y / distance) * self.speed
-
-            if self.rect.colliderect(pygame.Rect(self.target_x - 5, self.target_y - 5, 10, 10)):
-                self.kill()
-
-    def set_id_enemy(self, other):
-        self.target_enemy = id(other)
-        if self.target_enemy is not None:
-            self.target_x, self.target_y = other.rect.x, other.rect.y
-            if id(other) is not self.target_enemy:
-                print("change id")
+        self.rect.x += self.velocity_x
+        self.rect.y += self.velocity_y
+        if pygame.Rect(self.target_x - 5, self.target_y - 5, 10, 10).colliderect(self.rect):
+            self.kill()
 
 
 class Game:
@@ -140,20 +113,22 @@ class Game:
     def __init__(self, player: Player, enemy: Enemy):
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
+
         pygame.init()
         pygame.display.set_caption("staminaspace")
         self.CREATE_ENEMY = pygame.USEREVENT
-        pygame.time.set_timer(self.CREATE_ENEMY, 10000)
+        pygame.time.set_timer(self.CREATE_ENEMY, 2000)
 
         self.playing = True
         self.FPS = pygame.time.Clock()
 
         self.player = player
         self.enemy = enemy
-
         self.main_display = pygame.display.set_mode((Size.WIDTH.value, Size.HEIGHT.value))
         self.bg = pygame.transform.scale(pygame.image.load("sprites/background_space.png"), (1200, 800))
         self.current_key = None
+
+        self.focus = None
         self.enemies.add(Enemy())
 
     def __new__(cls, *args, **kwargs):
@@ -181,6 +156,7 @@ class Game:
         for i in range(pygame.K_a, pygame.K_z + 1):
             if keys[i]:
                 self.current_key = chr(i)
+                return chr(i)
 
     def generate_fragments(self, x, y):
         for _ in range(10):
@@ -188,7 +164,6 @@ class Game:
             h = random.randint(10, 20)
             x = x
             y = y
-
             # x = rect.x + random.randint(0, rect.width - w)
             # y = rect.y + random.randint(0, rect.height - h)
             dx = random.randint(-5, 5)
@@ -196,73 +171,65 @@ class Game:
             fragments.append([pygame.Rect(x, y, w, h), dx, dy])
 
 
+group = []
+group2 = []
+
 animating = False
 game_active = True
 fragments = []
-
+enemy_obj = Enemy()
 game = Game(player=Player(), enemy=Enemy())
 
 while game.playing:
     for event in pygame.event.get():
         if event.type == QUIT:
             game.playing = False
-
         if event.type == game.CREATE_ENEMY:
-            game.add_enemy(Enemy())
+            # game.add_enemy(Enemy())
+            group.append(Enemy())
 
-
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                player_center_x, player_center_y = game.player.player_rect.center
-                new_bullet = Bullet(player_center_x, player_center_y)
-                game.add_bullet(new_bullet)
-
-    # game.player.player_keyboard_move()
-
-    for bullet in game.bullets:
-        try:
-            nearest_enemy = max(game.enemies, key=lambda enemy: enemy.rect.centery).set_color()
-            nearest_enemy.focus = True
-            if any(enemy.focus for enemy in game.enemies):
-                bullet.target_x, bullet.target_y = nearest_enemy.rect.center
-        except ValueError as e:
-            game.add_enemy(Enemy())
-
-    game.main_display.blit(game.bg, game.bg.get_rect())
-
-    for i in game.enemies:
-        i.draw_enemy()
-
+    game.main_display.blit(game.bg, (0, 0))
     game.bullets.update()
-    game.enemies.update()
 
-    for enemy in game.enemies:
-        if enemy.word:
-            print(enemy.word)
-            game.check_keys()
-            if game.current_key is enemy.word[0]:
-                enemy.delete_symbol(game.current_key)
+    collisions = pygame.sprite.groupcollide(game.bullets, game.enemies, True, False)
 
-                player_center_x, player_center_y = game.player.player_rect.center
-                new_bullet = Bullet(player_center_x, player_center_y)
-                game.add_bullet(new_bullet)
-            if enemy.word is None:
-                game.enemies.remove(enemy)
+    for i in group:
+        if game.check_keys() == i.word2[0] and len(group2) == 0:
+            group2.append(i)
+            i.set_color()
+            break
 
-        if enemy.rect.colliderect(game.player.player_rect):
+    for i in group2:
+        if i.word is None or i.rect.y > Size.HEIGHT.value:
+            group2.remove(i)
+            group.remove(i)
+            break
+
+    for enemy in group:
+        enemy.draw()
+        enemy.update()
+
+    for enemy2 in group2:
+        enemy2.draw()
+        enemy2.update()
+
+        if game.current_key == enemy2.word[0]:
+            enemy2.delete_symbol(game.current_key)
+            if not enemy2.word:
+                enemy2.kill()
+
+            player_center_x, player_center_y = game.player.rect.center
+            target_x, target_y = enemy2.rect.center
+            new_bullet = Bullet(player_center_x, player_center_y, target_x, target_y)
+            game.add_bullet(new_bullet)
+
+        if enemy2.rect.colliderect(game.player.rect):
             game.playing = False
 
-
-    if game.bullets.sprites() and game.enemies.sprites():
-        for enemy, bullet in zip_longest(game.enemies, game.bullets):
-            x = enemy.dead()
-            x = x.get_rect_2()
-            print(x.center)
-            bullet.set_dead_coordinates(x)
     # game.enemies.draw(game.main_display)
-    game.bullets.draw(game.main_display)
+    for bullet in game.bullets:
+        game.main_display.blit(bullet.image, bullet.rect)
 
-    game.main_display.blit(game.player.image, game.player.player_rect)
-
+    game.main_display.blit(game.player.image, game.player.rect)
     pygame.display.flip()
     game.FPS.tick(60)
