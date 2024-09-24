@@ -5,15 +5,11 @@ from pygame.constants import QUIT, K_DOWN, K_UP, K_LEFT, K_RIGHT, K_a, K_b, K_c,
 import random
 from itertools import zip_longest
 
-# words = [
-#     "adventure", "blossom", "curiosity", "delight", "envision",
-#     "flourish", "graceful", "harmony", "insight", "jubilant",
-#     "kinship", "luminous", "mystique", "nomadic", "opulence",
-#     "pristine", "quaint", "resilient", "tranquil", "vivacious"
-# ]
-#
 words = [
-    "abrakadabra", "aaaaaaaaaaaa", "graceful", "harmony"
+    "adventure", "blossom", "curiosity", "delight", "envision",
+    "flourish", "graceful", "harmony", "insight", "jubilant",
+    "kinship", "luminous", "mystique", "nomadic", "opulence",
+    "pristine", "quaint", "resilient", "tranquil", "vivacious"
 ]
 
 
